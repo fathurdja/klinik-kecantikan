@@ -5,6 +5,64 @@ import { financialSummary, formatCurrency } from '../data/dummy';
 
 export default function KeuanganPage() {
   const [period, setPeriod] = useState('bulan-ini');
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  const handleExportPDF = () => {
+    setIsExportingPDF(true);
+    // Simulate loading delay
+    setTimeout(() => {
+      setIsExportingPDF(false);
+      showToast('🖨️ Dialog cetak dibuka, silakan Simpan sebagai PDF');
+      window.print();
+    }, 1500);
+  };
+
+  const handleExportExcel = () => {
+    setIsExportingExcel(true);
+    // Simulate loading delay
+    setTimeout(() => {
+      // Build a comprehensive report in CSV format
+      const lines = [
+        "LAPORAN KEUANGAN GLOWCARE ERP",
+        `Periode,${period === 'bulan-ini' ? 'September 2026' : period === 'bulan-lalu' ? 'Agustus 2026' : 'Q3 2026'}`,
+        "",
+        "RINGKASAN",
+        `Total Pendapatan,${financialSummary.thisMonth.revenue}`,
+        `Total Pengeluaran,${financialSummary.thisMonth.expenses}`,
+        `Laba Bersih,${financialSummary.thisMonth.profit}`,
+        `Total Transaksi,${financialSummary.thisMonth.totalTransactions}`,
+        "",
+        "KOMPOSISI PENDAPATAN",
+        "Kategori,Pendapatan,Persentase",
+        `Treatment,${financialSummary.thisMonth.treatmentRevenue},${Math.round(financialSummary.thisMonth.treatmentRevenue / financialSummary.thisMonth.revenue * 100)}%`,
+        `Produk Retail,${financialSummary.thisMonth.productRevenue},${Math.round(financialSummary.thisMonth.productRevenue / financialSummary.thisMonth.revenue * 100)}%`,
+        `Paket / Member,${financialSummary.thisMonth.packageRevenue},${Math.round(financialSummary.thisMonth.packageRevenue / financialSummary.thisMonth.revenue * 100)}%`,
+        "",
+        "RINCIAN PENGELUARAN",
+        "Kategori,Jumlah,Persentase",
+        ...financialSummary.expenseCategories.map(e => `${e.category},${e.amount},${e.percentage}%`)
+      ];
+
+      const csvContent = "data:text/csv;charset=utf-8," + lines.join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Laporan_Keuangan_${period}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setIsExportingExcel(false);
+      showToast('✅ Laporan lengkap berhasil di-export ke format Excel (CSV)');
+    }, 2000);
+  };
 
   const { thisMonth, lastMonth } = financialSummary;
   const revenueGrowth = ((thisMonth.revenue - lastMonth.revenue) / lastMonth.revenue * 100).toFixed(1);
@@ -13,6 +71,18 @@ export default function KeuanganPage() {
 
   return (
     <>
+      {toastMessage && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          background: 'var(--color-surface)', color: 'var(--color-text)',
+          padding: '12px 24px', borderRadius: 8, boxShadow: 'var(--shadow-lg)',
+          borderLeft: '4px solid var(--color-success)', fontWeight: 500,
+          animation: 'slideIn 0.3s ease-out'
+        }} className="no-print">
+          {toastMessage}
+        </div>
+      )}
+      
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -30,11 +100,59 @@ export default function KeuanganPage() {
               <option value="bulan-lalu">📅 Agustus 2026</option>
               <option value="quarter">📅 Q3 2026</option>
             </select>
-            <button className="btn btn-outline" onClick={() => alert('Mengekspor laporan ke PDF...')}>📄 Export PDF</button>
-            <button className="btn btn-outline" onClick={() => alert('Mengekspor laporan ke Excel...')}>📊 Export Excel</button>
+            <button 
+              className="btn btn-outline" 
+              onClick={handleExportPDF}
+              disabled={isExportingPDF}
+              style={{ minWidth: 140 }}
+            >
+              {isExportingPDF ? (
+                <>
+                  <span className="spinner" style={{ width: 14, height: 14, border: '2px solid currentColor', borderRightColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.75s linear infinite' }} /> Memproses...
+                </>
+              ) : '📄 Export PDF'}
+            </button>
+            <button 
+              className="btn btn-outline" 
+              onClick={handleExportExcel}
+              disabled={isExportingExcel}
+              style={{ minWidth: 140 }}
+            >
+              {isExportingExcel ? (
+                <>
+                  <span className="spinner" style={{ width: 14, height: 14, border: '2px solid currentColor', borderRightColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.75s linear infinite' }} /> Memproses...
+                </>
+              ) : '📊 Export Excel'}
+            </button>
           </div>
         </div>
       </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        @media print {
+          /* Hide non-essential UI */
+          .sidebar, .top-bar, .no-print, button, select, .sidebar-overlay, .mobile-menu-toggle {
+            display: none !important;
+          }
+          /* Adjust Layout for Paper */
+          body { background: white !important; color: black !important; margin: 0; padding: 0; }
+          .app-layout { display: block !important; }
+          .main-content { margin-left: 0 !important; width: 100% !important; display: block !important; }
+          .page-header { padding: 0 0 20px 0 !important; border-bottom: 2px solid #000; margin-bottom: 20px; }
+          .page-content { padding: 0 !important; }
+          /* Fix Cards */
+          .card { border: 1px solid #ddd !important; box-shadow: none !important; break-inside: avoid; margin-bottom: 20px !important; }
+          .stat-card { border: 1px solid #ddd !important; box-shadow: none !important; break-inside: avoid; }
+          .stats-grid { display: flex; gap: 10px; }
+          .stats-grid > div { flex: 1; }
+          .content-grid { display: block; }
+          /* Ensure Colors Print (Chrome/Safari) */
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `}} />
 
       <div className="page-content">
         {/* Financial Stats */}

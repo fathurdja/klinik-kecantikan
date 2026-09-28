@@ -9,6 +9,7 @@ const navItems = [
   { section: 'OPERASIONAL' },
   { label: 'Appointment', icon: '📅', href: '/appointment', badge: 6 },
   { label: 'Pasien', icon: '👤', href: '/pasien' },
+  { label: 'Rekam Medis', icon: '📝', href: '/emr' },
   { label: 'POS & Kasir', icon: '💳', href: '/pos' },
   { section: 'MANAJEMEN' },
   { label: 'Inventori', icon: '📦', href: '/inventori' },

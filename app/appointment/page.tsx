@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { appointments, formatCurrency, getStatusLabel, getStatusIcon } from '../data/dummy';
 import type { AppointmentStatus } from '../data/dummy';
 
@@ -22,6 +23,9 @@ export default function AppointmentPage() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [appointmentsList, setAppointmentsList] = useState(appointments);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 
   const filteredAppointments = activeFilter === 'all'
     ? appointmentsList
@@ -144,8 +148,8 @@ export default function AppointmentPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <button className="btn btn-ghost btn-sm" title="Detail">👁️</button>
-                          <button className="btn btn-ghost btn-sm" title="Edit">✏️</button>
+                          <button className="btn btn-ghost btn-sm" title="Detail" onClick={() => { setSelectedAppointment(apt); setShowDetailModal(true); }}>👁️</button>
+                          <button className="btn btn-ghost btn-sm" title="Edit" onClick={() => { setSelectedAppointment(apt); setShowEditModal(true); }}>✏️</button>
                         </div>
                       </td>
                     </tr>
@@ -274,6 +278,114 @@ export default function AppointmentPage() {
                   alert('Appointment berhasil ditambahkan!');
                 }}>Simpan</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showEditModal && selectedAppointment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: 500, padding: 24 }}>
+            <h2 style={{ marginBottom: 16 }}>✏️ Edit Appointment ({selectedAppointment.id})</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select className="form-select" id="editAptStatus" defaultValue={selectedAppointment.status}>
+                  {statusFilters.filter(f => f.value !== 'all').map(f => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Dokter/Beautician</label>
+                <select className="form-select" id="editAptDoctor" defaultValue={selectedAppointment.doctor}>
+                  <option value="Dr. Ayu Paramitha">Dr. Ayu Paramitha</option>
+                  <option value="Dr. Wayan Surya">Dr. Wayan Surya</option>
+                  <option value="Beautician Dewi">Beautician Dewi</option>
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Tanggal</label>
+                  <input type="date" className="form-input" id="editAptDate" defaultValue={selectedAppointment.date} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Jam</label>
+                  <input type="time" className="form-input" id="editAptTime" defaultValue={selectedAppointment.time} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+                <button className="btn btn-outline" onClick={() => setShowEditModal(false)}>Batal</button>
+                <button className="btn btn-primary" onClick={() => {
+                  const updatedList = appointmentsList.map(a => {
+                    if (a.id === selectedAppointment.id) {
+                      return {
+                        ...a,
+                        status: (document.getElementById('editAptStatus') as HTMLSelectElement).value as AppointmentStatus,
+                        doctor: (document.getElementById('editAptDoctor') as HTMLSelectElement).value,
+                        date: (document.getElementById('editAptDate') as HTMLInputElement).value,
+                        time: (document.getElementById('editAptTime') as HTMLInputElement).value,
+                      };
+                    }
+                    return a;
+                  });
+                  setAppointmentsList(updatedList);
+                  setShowEditModal(false);
+                  alert('Appointment berhasil diupdate!');
+                }}>Simpan Perubahan</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDetailModal && selectedAppointment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: 600, padding: 32, position: 'relative' }}>
+            <button onClick={() => setShowDetailModal(false)} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>✕</button>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #eee', paddingBottom: 16, marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: '0 0 4px 0' }}>Detail Appointment</h2>
+                <span style={{ color: '#666', fontFamily: 'monospace' }}>{selectedAppointment.id}</span>
+              </div>
+              <span className={`badge badge-${selectedAppointment.status}`} style={{ padding: '6px 12px', fontSize: 14 }}>
+                {getStatusIcon(selectedAppointment.status)} {getStatusLabel(selectedAppointment.status)}
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+              <div>
+                <h4 style={{ color: '#888', marginBottom: 8, fontSize: 12, textTransform: 'uppercase' }}>Informasi Pasien</h4>
+                <p style={{ margin: '0 0 4px 0', fontWeight: 600, fontSize: 16 }}>{selectedAppointment.patientName}</p>
+                <p style={{ margin: 0, color: '#666' }}>ID: {selectedAppointment.patientId}</p>
+              </div>
+              <div>
+                <h4 style={{ color: '#888', marginBottom: 8, fontSize: 12, textTransform: 'uppercase' }}>Informasi Treatment</h4>
+                <p style={{ margin: '0 0 4px 0', fontWeight: 600, fontSize: 16 }}>{selectedAppointment.treatment}</p>
+                <p style={{ margin: 0, color: '#666' }}>Oleh: {selectedAppointment.doctor}</p>
+              </div>
+              <div>
+                <h4 style={{ color: '#888', marginBottom: 8, fontSize: 12, textTransform: 'uppercase' }}>Jadwal</h4>
+                <p style={{ margin: '0 0 4px 0', fontWeight: 600 }}>📅 {selectedAppointment.date}</p>
+                <p style={{ margin: 0 }}>⏰ {selectedAppointment.time} ({selectedAppointment.duration} menit)</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid #eee', paddingTop: 20 }}>
+              <button className="btn btn-outline" onClick={() => setShowDetailModal(false)}>Tutup</button>
+              {(selectedAppointment.status === 'checked-in' || selectedAppointment.status === 'in-treatment') && (
+                <Link href="/emr/1">
+                  <button className="btn btn-primary">📝 Buka Rekam Medis (EMR)</button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
