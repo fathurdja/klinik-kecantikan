@@ -1,0 +1,45 @@
+name: Deploy via Self-Hosted ZeroTier (ztncui)
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Langkah 1: Install ZeroTier di mesin GitHub
+      - name: Install ZeroTier
+        run: curl -s https://install.zerotier.com | sudo bash
+
+      # Langkah 2: Pasang Static Identity yang sudah diotorisasi di ztncui
+      - name: Setup Static ZeroTier Identity
+        run: |
+          sudo systemctl stop zerotier-one
+          echo "${{ secrets.ZT_IDENTITY_SECRET }}" | sudo tee /var/lib/zerotier-one/identity.secret > /dev/null
+          sudo systemctl start zerotier-one
+
+      # Langkah 3: Join ke jaringan Anda dan tunggu IP turun
+      - name: Join ZeroTier Network
+        run: |
+          sudo zerotier-cli join ${{ secrets.ZEROTIER_NETWORK_ID }}
+          echo "Menunggu alokasi IP dari ztncui..."
+          sleep 15
+          sudo zerotier-cli listnetworks
+
+      # Langkah 4: Eksekusi SSH (menggunakan IP ZeroTier server Anda)
+      - name: Execute Deployment Commands on Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }} # Pastikan ini IP ZeroTier Server Anda
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /www/wwwroot/klinik-kecantikan
+            
+            git pull origin master
+            
+            # npm install
+            # npm run build
+            # pm2 restart app
